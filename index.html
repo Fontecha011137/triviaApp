@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    header, footer {
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 10px;
+    }
+    footer{
+        margin-bottom: 0;
+        bottom: 0;
+        position: fixed;
+        width: 100%;
+    }
+    main {
+      padding: 20px;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    footer button{
+        margin-top: -10px;
+    }
+    #categoryButtons {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #categoryButtons button {
+      width: 150px;
+      margin: 10px;
+    }
+    #questionContainer {
+      margin-top: 20px;
+    }
+    #scoreContainer {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .search-container {
+      position: relative;
+    }
+    .search-input {
+      position: absolute;
+      top: 30px;
+      left: 0;
+      width: 100%;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Trivia Game</h1>
+</header>
+
+<main>
+  <div>
+    <h2>Selecciona una categoría</h2>
+    <div id="categoryButtons"></div>
+    
+    <label for="difficultySelect">Selecciona dificultad (opcional):</label>
+    <select id="difficultySelect">
+      <option value="">--Selecciona dificultad--</option>
+      <option value="easy">Fácil</option>
+      <option value="medium">Media</option>
+      <option value="hard">Difícil</option>
+    </select>
+
+    <div id="questionContainer"></div>
+    <div id="scoreContainer">Puntaje: 0</div>
+  </div>
+</main>
+
+<footer>
+  <button id="searchButton">Buscar Categoría</button>
+  <button id="favoritesButton">Ver Favoritos</button><br>
+  <input type="text" id="searchInput" class="search-input" placeholder="Buscar categoría...">
+</footer>
+
+<script src="script.js"></script>
+
+</body>
+</html>
