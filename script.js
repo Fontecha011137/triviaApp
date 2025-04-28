@@ -1,73 +1,97 @@
-const searchButton = document.getElementById('searchButton');
+// Inicializar Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCKjpyepJDlMv28Pxn99zQcKfYaBMPsf3g",
+  authDomain: "triviaapp-bcb65.firebaseapp.com",
+  projectId: "triviaapp-bcb65",
+  storageBucket: "triviaapp-bcb65.firebasestorage.app",
+  messagingSenderId: "4687712821",
+  appId: "1:4687712821:web:fbe889dc743c551fde177c"
+};
+firebase.initializeApp(firebaseConfig);
+
+// Variables globales
+const API_URL = 'https://opentdb.com/api.php?amount=1&type=multiple&encode=url3986';
 const categoryButtonsContainer = document.getElementById('categoryButtons');
 const difficultySelect = document.getElementById('difficultySelect');
 const questionContainer = document.getElementById('questionContainer');
 const scoreContainer = document.getElementById('scoreContainer');
+const searchButton = document.getElementById('searchButton');
 const favoritesButton = document.getElementById('favoritesButton');
-const searchInput = document.getElementById('searchInput');
+const usersButton = document.getElementById('usersButton');
+const usersModal = document.getElementById('usersModal');
+const usersList = document.getElementById('usersList');
+const closeUsersModal = document.getElementById('closeUsersModal');
 
-// Datos de ejemplo para categorías (esto puede provenir de la API)
-const selectedCategories = [
-  { id: 9, name: 'General Knowledge' },
-  { id: 21, name: 'Sports' },
-  { id: 23, name: 'History' },
-  { id: 11, name: 'Entertainment: Film' },
-  { id: 17, name: 'Science: Computers' },
-  { id: 18, name: 'Science: Gadgets' }
+// Variables para el registro
+const registerButton = document.getElementById('registerButton');
+const registerModal = document.getElementById('registerModal');
+const closeRegisterModal = document.getElementById('closeRegisterModal');
+const submitRegister = document.getElementById('submitRegister');
+
+let currentCategory = null;
+let score = 0;
+let favorites = [];
+
+// Cargar categorías manuales
+const categories = [
+  { id: 9, name: "Conocimiento General" },
+  { id: 17, name: "Ciencia y Naturaleza" },
+  { id: 18, name: "Computación" },
+  { id: 23, name: "Historia" },
+  { id: 21, name: "Deportes" },
+  { id: 22, name: "Geografía" }
 ];
 
-let score = 0;
-let currentCategoryId = null; // Para rastrear la categoría seleccionada
-
-// Mostrar las categorías iniciales
-createCategoryButtons(selectedCategories);
-
-// Mostrar preguntas favoritas cuando el botón es clickeado
-favoritesButton.addEventListener('click', () => {
-  showFavorites();
+categories.forEach(category => {
+  const button = document.createElement('button');
+  button.textContent = category.name;
+  button.addEventListener('click', () => {
+    currentCategory = category.id;
+    startTrivia();
+  });
+  categoryButtonsContainer.appendChild(button);
 });
 
-// Función para mostrar las categorías
-function createCategoryButtons(categories) {
-  categoryButtonsContainer.innerHTML = '';  // Limpiar los botones previos
-
-  categories.forEach(category => {
-    const button = document.createElement('button');
-    button.textContent = category.name;
-    button.addEventListener('click', () => {
-      currentCategoryId = category.id; // Almacenar la categoría seleccionada
-      startTrivia(currentCategoryId);
-    });
-    categoryButtonsContainer.appendChild(button);
-  });
+// Función para mezclar respuestas
+function secureShuffleArray(array) {
+  const cryptoArray = new Uint32Array(array.length);
+  crypto.getRandomValues(cryptoArray);
+  let currentIndex = array.length;
+  let temporaryValue;
+  let randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = cryptoArray[currentIndex - 1] % currentIndex;
+    currentIndex--;
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
 }
 
-// Función para manejar la trivia
-function startTrivia(categoryId) {
-  const selectedDifficulty = difficultySelect.value;
+// Función para comenzar el juego
+function startTrivia() {
+  questionContainer.innerHTML = 'Cargando pregunta...';
+  scoreContainer.textContent = 'Puntaje: ' + score;
 
-  // Aquí va el código para hacer la solicitud a la API, pasando tanto la categoría como la dificultad seleccionada
-  const API_URL = 'https://opentdb.com/api.php?amount=1&type=multiple';
-  let url = `${API_URL}&category=${categoryId}`;
-  
-  if (selectedDifficulty !== '') {
-    url += `&difficulty=${selectedDifficulty}`;
+  let url = `${API_URL}&category=${currentCategory}`;
+  const difficulty = difficultySelect.value;
+  if (difficulty) {
+    url += `&difficulty=${difficulty}`;
   }
 
-  // Mostrar mensaje de "cargando" mientras se obtiene la pregunta
-  questionContainer.innerHTML = 'Cargando pregunta...';
-  
   fetch(url)
     .then(response => response.json())
     .then(data => {
-      const question = data.results[0].question;
-      const answers = data.results[0].incorrect_answers;
-      const correctAnswer = data.results[0].correct_answer;
+      const question = decodeURIComponent(data.results[0].question);
+      const correctAnswer = decodeURIComponent(data.results[0].correct_answer);
+      const incorrectAnswers = data.results[0].incorrect_answers.map(ans => decodeURIComponent(ans));
 
-      // Mostrar la pregunta y opciones
-      questionContainer.innerHTML = `<h2>${question}</h2>`;
+      questionContainer.innerHTML = '';
+      questionContainer.innerHTML += `<h2>${question}</h2>`;
 
-      const options = [...answers, correctAnswer];
+      const options = [...incorrectAnswers, correctAnswer];
+      secureShuffleArray(options);
+
       options.forEach(option => {
         const button = document.createElement('button');
         button.innerHTML = option;
@@ -76,89 +100,112 @@ function startTrivia(categoryId) {
       });
     })
     .catch(error => {
-      console.error('Error al obtener la pregunta:', error);
-      questionContainer.innerHTML = 'Ocurrió un error al cargar la pregunta.';
+      console.error('Error al cargar pregunta:', error);
+      questionContainer.innerHTML = 'Error al cargar la pregunta.';
     });
 }
 
-// Función para comprobar la respuesta
+// Función para revisar respuesta
 function checkAnswer(button, correctAnswer) {
   const selectedAnswer = button.innerHTML;
-  
-  // Verificar si la respuesta seleccionada es correcta
+
   if (selectedAnswer === correctAnswer) {
     score++;
     scoreContainer.textContent = 'Puntaje: ' + score;
-    questionContainer.innerHTML = `¡Correcto! 🎉`;
+    questionContainer.innerHTML = `
+      <span>🤩</span>
+      <div class="alert alert-success" role="alert"><strong>¡Respuesta Correcta!</strong></div>
+    `;
   } else {
-    score = 0; // Puedes resetear la puntuación si deseas
-    scoreContainer.textContent = 'Puntaje: ' + score;
-    questionContainer.innerHTML = `Incorrecto. La respuesta correcta era: ${correctAnswer}`;
+    questionContainer.innerHTML = `
+      <span>😞</span>
+      <div class="alert alert-danger" role="alert">Respuesta incorrecta, la correcta era: <strong>${correctAnswer}</strong></div>
+    `;
+    score = 0;
   }
 
-  // Después de un breve retraso, mostrar la siguiente pregunta
   setTimeout(() => {
-    startTrivia(currentCategoryId); // Nueva pregunta con la misma categoría
-  }, 1500); // Retardo de 1.5 segundos antes de mostrar la nueva pregunta
+    startTrivia();
+  }, 1500);
 }
 
-// Función para agregar la pregunta a los favoritos
-function addFavorite(question, options, correctAnswer) {
-  const favoriteQuestion = {
-    question: question,
-    options: options,
-    correctAnswer: correctAnswer
-  };
-
-  let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-  favorites.push(favoriteQuestion);
-  localStorage.setItem('favorites', JSON.stringify(favorites));
-
-  alert('Pregunta marcada como favorita!');
-}
-
-// Función para mostrar las preguntas favoritas
-function showFavorites() {
-  const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-  
+// Botón favoritos
+favoritesButton.addEventListener('click', () => {
   if (favorites.length === 0) {
-    questionContainer.innerHTML = 'No tienes preguntas favoritas aún.';
-    return;
+    alert('No hay favoritos aún.');
+  } else {
+    alert('Favoritos:\n' + favorites.join('\n'));
   }
-
-  questionContainer.innerHTML = '<h2>Preguntas Favoritas</h2>';
-  
-  favorites.forEach((favorite, index) => {
-    const questionText = document.createElement('p');
-    questionText.textContent = `${index + 1}. ${favorite.question}`;
-
-    const optionsText = document.createElement('p');
-    optionsText.textContent = `Opciones: ${favorite.options.join(', ')}`;
-
-    const correctAnswerText = document.createElement('p');
-    correctAnswerText.textContent = `Respuesta correcta: ${favorite.correctAnswer}`;
-
-    questionContainer.appendChild(questionText);
-    questionContainer.appendChild(optionsText);
-    questionContainer.appendChild(correctAnswerText);
-    questionContainer.appendChild(document.createElement('hr')); // Línea separadora
-  });
-}
-
-// Función para buscar categorías
-searchButton.addEventListener('click', () => {
-  const searchTerm = searchInput.value.toLowerCase();
-  
-  const filteredCategories = selectedCategories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm)
-  );
-  
-  createCategoryButtons(filteredCategories);  // Mostrar las categorías filtradas
-  searchInput.style.display = 'none';  // Ocultar la barra de búsqueda después de buscar
 });
 
-// Mostrar la barra de búsqueda al hacer clic en el botón
+// Botón buscar categoría
 searchButton.addEventListener('click', () => {
-  searchInput.style.display = 'block';  // Mostrar barra de búsqueda
-  searchInput.focus();  // Focar el input para que el usuario pueda escribir directamente
+  const searchTerm = prompt('¿Qué categoría buscas?');
+  if (searchTerm) {
+    const found = categories.find(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (found) {
+      currentCategory = found.id;
+      startTrivia();
+    } else {
+      alert('Categoría no encontrada.');
+    }
+  }
+});
+
+// ---------- Registro con Firebase ----------
+registerButton.addEventListener('click', () => {
+  registerModal.style.display = 'flex';
+});
+
+// Cerrar modal de registro
+closeRegisterModal.addEventListener('click', () => {
+  registerModal.style.display = 'none';
+});
+
+// Registrar usuario
+submitRegister.addEventListener('click', () => {
+  const name = document.getElementById('registerName').value.trim();
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value.trim();
+
+  if (email && password) {
+    firebase.auth().createUserWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        alert('Usuario registrado correctamente.');
+        registerModal.style.display = 'none';
+      })
+      .catch((error) => {
+        alert('Error: ' + error.message);
+      });
+  } else {
+    alert('Completa todos los campos.');
+  }
+});
+
+// Abrir modal de usuarios
+usersButton.addEventListener("click", async () => {
+  usersModal.style.display = "flex";
+  usersList.innerHTML = "<li>Cargando...</li>";
+
+  try {
+    const snapshot = await firebase.firestore().collection("usuarios").get();
+    if (snapshot.empty) {
+      usersList.innerHTML = "<li>No hay usuarios registrados.</li>";
+    } else {
+      usersList.innerHTML = "";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const li = document.createElement("li");
+        li.textContent = `${data.nombre} (${data.email})`;
+        usersList.appendChild(li);
+      });
+    }
+  } catch (error) {
+    usersList.innerHTML = "<li>Error al cargar usuarios.</li>";
+  }
+});
+
+// Cerrar modal de usuarios
+closeUsersModal.addEventListener("click", () => {
+  usersModal.style.display = "none";
 });
